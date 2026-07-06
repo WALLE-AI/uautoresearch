@@ -1,4 +1,5 @@
 # 算法训练的经验知识库
+* survey模块 依靠codex/opencode/claude coded等智能体框架的web_search/web_fetch/web_research工具完成算法综述调研
 * 算法技巧经验，包括训练策略、超参数选择、复盘策略、持续优化策略
 * 数据集分析以及构建经验库
 * 评测基准构建以及经验
