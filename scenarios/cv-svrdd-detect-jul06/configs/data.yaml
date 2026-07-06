@@ -1,0 +1,13 @@
+path: /home/dataset1/gaojing/xibeiyuan/datasets/SVRDD/SVRDD_YOLO
+train: train_abs.txt
+val: val_abs.txt
+test: test_abs.txt
+
+names:
+  0: Longitudinal Crack
+  1: Transverse Crack
+  2: Alligator Crack
+  3: Pothole
+  4: Longitudinal Patch
+  5: Transverse Patch
+  6: Manhole Cover

@@ -1,0 +1,19 @@
+tag: cv-svrdd-detect-jul06
+domain: cv
+task_type: object-detection
+base_model: TBD (candidates: yolo11x, yolo26n; groundingdino ruled out, see analysis_report.md)
+trainer_engine: ultralytics
+budget:
+  time_budget_min: 300
+metric:
+  name: mAP50-95
+  direction: maximize
+baseline:
+  value: null
+  run_id: null
+current_best:
+  value: null
+  run_id: null
+status: analyzing
+notes:
+  target_metric: "mAP50-95 > 0.9 (user-specified stretch goal; flagged as unrealistic for this task, see analysis_report.md). Loop continues to budget exhaustion regardless of whether target is reached."
