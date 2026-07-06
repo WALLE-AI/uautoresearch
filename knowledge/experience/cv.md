@@ -1,0 +1,8 @@
+# CV Experience Log
+
+## semantic-segmentation on swin_base_patch4_window12_384.ms_in22k_ft_in1k (cv) — from scenario `cv-bfdd-seg-smoketest-jul06`, jul06
+
+- **Worked**: framework mechanics only (this was a feasibility smoke test, not a metric-improvement scenario) — the `custom-<project>` trainer engine pattern (see `trainer/references/custom-bfdd-segmentation.md`) successfully wraps a bespoke `torchrun` DDP script (`xibeiyuan/train_bfdd_swin.py`) that doesn't fit any of the 6 standard engines. `timeout --signal=TERM` around `torchrun` is a safe way to enforce `time_budget_min` on engines with no native time-based stop, since this script only checkpoints on new-best (no risk of corrupting an in-progress save).
+- **Did not work**: LR 5e-6 → 1e-5 during a short finetune (val_mIoU 0.5801 → 0.5682, worse); early_stop patience 20 → 5 (val_mIoU 0.5801 → 0.5782, worse, and cut convergence short at 6 epochs). Neither result should be treated as a real finding — both were single-epoch-scale, deliberately low-effort smoke-test perturbations on a 12-minute budget, not a proper hyperparameter search.
+- **Failure mode**: a `time_budget_min` below ~3 minutes will never complete a single epoch on this codebase — dataset stem loading, per-class pixel weight estimation, and 8×-redundant copy-paste pool pre-building alone take ~60-90s before epoch 1 starts (confirmed: a 2-minute test run produced no epoch and correctly triggered the wrapper's crash-detection path).
+- **Data note**: BFDD_Dataset (686 stems, 6 classes: background + 5 defect types, RGB+IR fusion) at 1024×1024, batch=2/GPU, accumulate=4 on 8×A100 40GB: ~10-16s/epoch, ~17GB peak VRAM — well under the 40GB limit, room to grow batch size/resolution for a real research pass.

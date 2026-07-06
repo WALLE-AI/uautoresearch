@@ -1,0 +1,17 @@
+tag: cv-bfdd-seg-smoketest-jul06
+domain: cv
+task_type: semantic-segmentation
+base_model: /home/dataset1/gaojing/xibeiyuan/models/swin_base_patch4_window12_384.ms_in22k_ft_in1k
+trainer_engine: custom-bfdd-segmentation
+budget:
+  time_budget_min: 12
+metric:
+  name: val_mIoU
+  direction: maximize
+baseline:
+  value: 0.5801
+  run_id: /home/dataset1/gaojing/xibeiyuan/checkpoints/bfdd_swin_base_ft/best.pth
+current_best:
+  value: 0.5801
+  run_id: /home/dataset1/gaojing/xibeiyuan/checkpoints/bfdd_swin_base_ft/best.pth
+status: done

@@ -1,0 +1,3 @@
+commit,metric_value,peak_vram_gb,status,domain,engine,description
+n/a-iter1,0.5682,17.0,discard,cv,custom-bfdd-segmentation,finetune from bfdd_swin_base_ft/best.pth with LR=1e-5 (vs baseline 5e-6)
+n/a-iter2,0.5782,17.0,discard,cv,custom-bfdd-segmentation,finetune from bfdd_swin_base_ft/best.pth with EARLY_STOP=5 (vs baseline 20), LR=5e-6

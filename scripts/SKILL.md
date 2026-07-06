@@ -13,7 +13,7 @@ This skill turns the universal launch convention defined in `trainer/SKILL.md` i
 scripts/<engine>_run.sh <config> <time_budget_min>
 ```
 
-Where `<engine>` matches `trainer_engine` in `scenario.yaml` (`llama-factory`, `verl`, `roll`, `mmdetection`, `ultralytics`, `transformers`).
+Where `<engine>` matches `trainer_engine` in `scenario.yaml` (`llama-factory`, `verl`, `roll`, `mmdetection`, `ultralytics`, `transformers`, or a `custom-<project>` engine per `trainer/SKILL.md`).
 
 ## What the wrapper script must do
 

@@ -26,7 +26,7 @@ tag: <run-tag>
 domain: cv | nlp | llm | vlm
 task_type: <string>              # e.g. object-detection, instruction-sft, text-classification
 base_model: <string>
-trainer_engine: llama-factory | verl | roll | mmdetection | ultralytics | transformers
+trainer_engine: llama-factory | verl | roll | mmdetection | ultralytics | transformers | custom-<project>
 budget:
   time_budget_min: <int>         # wall-clock minutes per single experiment run in the loop
 metric:
