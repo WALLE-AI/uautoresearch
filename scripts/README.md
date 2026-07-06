@@ -1,2 +1,2 @@
-# uautoresearch
-uautoresearch
+# 训练脚本
+* 

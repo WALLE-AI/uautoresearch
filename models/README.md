@@ -1,2 +1,4 @@
-# uautoresearch
-uautoresearch
+# 模型库
+* 根据场景任务选择合适的模型或者网络结构建模设计
+
+

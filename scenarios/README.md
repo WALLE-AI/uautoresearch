@@ -1,2 +1,3 @@
-# uautoresearch
-uautoresearch
+# 任务场景分析描述
+* 需要根据真实场景需求分析、数据集EDA分析、算力分析、基线模型选型、构建管线流程、baseline评测、超参数寻优
+
