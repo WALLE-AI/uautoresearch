@@ -6,9 +6,15 @@
 # (git revert), never a single batch commit for all N candidates.
 #
 # Roles (see skills/experiment-loop/SKILL.md "Parallel mode"):
-#   [Trainer Agent]  writes configs, launches runs
-#   [Git-Ops Agent]  commits/reverts/updates scenario.yaml, appends ledger
+#   [Trainer Agent]   writes configs, launches runs
+#   [Monitor Agent]   polls loss/metric/GPU while each run is in progress,
+#                      writes monitor.log/metrics.csv (monitor/SKILL.md)
+#   [Git-Ops Agent]   commits/reverts/updates scenario.yaml, appends ledger
 #   [Evaluator Agent] extracts metric_value/peak_vram_mb from each run.log
+#
+# run.log/monitor.log/metrics.csv all live under
+# experiment_logs/cv-svrdd-detect-jul06/runs/<candidate>/ per
+# experiment_logs/SKILL.md's centralized log-location convention.
 #
 # Usage: bash run_loop_v2.sh
 
@@ -18,6 +24,8 @@ SCEN_DIR="/home/dataset1/gaojing/uautoresearch/scenarios/cv-svrdd-detect-jul06"
 REPO_DIR="/home/dataset1/gaojing/uautoresearch"
 LOG_DIR="/home/dataset1/gaojing/uautoresearch/experiment_logs/cv-svrdd-detect-jul06"
 RESULTS_CSV="$LOG_DIR/experiment_results.csv"
+RUNS_DIR="$LOG_DIR/runs"
+MONITOR_INTERVAL_SEC=300
 DATA_YAML="$SCEN_DIR/configs/data.yaml"
 BASE_MODEL="/home/dataset1/gaojing/xibeiyuan/models/yolo11x/yolo11x.pt"
 TIME_BUDGET_MIN=300
@@ -37,10 +45,45 @@ CANDIDATES=(
     "no_geo_aug:640:32:5:degrees=0 shear=0 perspective=0:disable rotation/shear/perspective (orientation is class-defining)"
 )
 
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" "$RUNS_DIR"
 if [[ ! -f "$RESULTS_CSV" ]]; then
     echo "commit,metric_value,peak_vram_gb,status,domain,engine,description" > "$RESULTS_CSV"
 fi
+
+# --- [Monitor Agent] poller: one per candidate, backgrounded, independent
+# of the Trainer Agent's wait. See monitor/SKILL.md for the full contract.
+poll_candidate() {
+    local name="$1" device="$2" run_log_dir="$3" results_csv_native="$4"
+    local metrics_csv="$run_log_dir/metrics.csv" monitor_log="$run_log_dir/monitor.log"
+    echo "timestamp,loss,metric_value,gpu_util,gpu_mem_mb" > "$metrics_csv"
+    local zero_streak=0
+    while true; do
+        if [[ -f "$run_log_dir/run.log" ]] && grep -q "^metric_value:" "$run_log_dir/run.log" 2>/dev/null; then
+            break
+        fi
+        local ts loss metric gpu_util gpu_mem
+        ts=$(date -Iseconds)
+        if [[ -f "$results_csv_native" ]]; then
+            loss=$(tail -1 "$results_csv_native" | awk -F, '{print $3}')
+            metric=$(tail -1 "$results_csv_native" | awk -F, '{print $7}')
+        else
+            loss=""; metric=""
+        fi
+        read -r gpu_util gpu_mem <<< "$(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits -i "$device" 2>/dev/null | tr ',' ' ')"
+        echo "$ts,$loss,$metric,$gpu_util,$gpu_mem" >> "$metrics_csv"
+        echo "[$ts] $name: loss=$loss metric=$metric gpu_util=${gpu_util}% gpu_mem=${gpu_mem}MB" >> "$monitor_log"
+        if [[ "$loss" == "nan" || "$loss" == "inf" ]]; then
+            echo "[ALERT] loss=$loss at $ts" >> "$monitor_log"
+        fi
+        if [[ "$gpu_util" == "0" ]]; then
+            zero_streak=$((zero_streak + 1))
+            [[ "$zero_streak" -eq 3 ]] && echo "[ALERT] gpu_util=0 for 3 consecutive polls, possible hang" >> "$monitor_log"
+        else
+            zero_streak=0
+        fi
+        sleep "$MONITOR_INTERVAL_SEC"
+    done
+}
 
 cd "$REPO_DIR"
 
@@ -48,11 +91,17 @@ cd "$REPO_DIR"
 echo "=== [$(date -Iseconds)] [Git-Ops Agent] committing ${#CANDIDATES[@]} candidate configs (one commit each) ==="
 declare -A CANDIDATE_COMMIT
 declare -A CANDIDATE_RUNDIR
+declare -A CANDIDATE_LOGDIR
+declare -A CANDIDATE_NATIVE_CSV
 for entry in "${CANDIDATES[@]}"; do
     IFS=':' read -r NAME IMGSZ BATCH DEVICE EXTRA_ARGS DESC <<< "$entry"
     CONFIG_FILE="$SCEN_DIR/configs/yolo11x_${NAME}_v2.env"
     RUN_DIR="$CHECKPOINT_ROOT/svrdd_yolo11x_${NAME}_v2"
+    RUN_LOG_DIR="$RUNS_DIR/$NAME"
+    mkdir -p "$RUN_LOG_DIR"
     CANDIDATE_RUNDIR["$NAME"]="$RUN_DIR"
+    CANDIDATE_LOGDIR["$NAME"]="$RUN_LOG_DIR"
+    CANDIDATE_NATIVE_CSV["$NAME"]="$RUN_DIR/train/results.csv"
     cat > "$CONFIG_FILE" <<EOF
 DATA_YAML=$DATA_YAML
 BASE_MODEL=$BASE_MODEL
@@ -61,28 +110,42 @@ BATCH=$BATCH
 EPOCHS=1000
 DEVICE=$DEVICE
 RUN_DIR=$RUN_DIR
+LOG_DIR=$RUN_LOG_DIR
 EXTRA_ARGS=$EXTRA_ARGS
 EOF
     git add "$CONFIG_FILE"
-    git commit -m "experiment(cv-svrdd-detect-jul06): candidate $NAME vs baseline 0.44222" -q
-    CANDIDATE_COMMIT["$NAME"]=$(git rev-parse --short=7 HEAD)
-    echo "  [Git-Ops Agent] committed $NAME -> ${CANDIDATE_COMMIT[$NAME]}"
+    if git diff --cached --quiet -- "$CONFIG_FILE"; then
+        git reset -q -- "$CONFIG_FILE"
+        CANDIDATE_COMMIT["$NAME"]=$(git log -1 --format=%h -- "$CONFIG_FILE")
+        echo "  [Git-Ops Agent] $NAME config unchanged, reusing commit ${CANDIDATE_COMMIT[$NAME]}"
+    else
+        git commit -m "fix(cv-svrdd-detect-jul06): candidate $NAME use centralized LOG_DIR for Monitor Agent" -q
+        CANDIDATE_COMMIT["$NAME"]=$(git rev-parse --short=7 HEAD)
+        echo "  [Git-Ops Agent] committed $NAME -> ${CANDIDATE_COMMIT[$NAME]}"
+    fi
 done
 
 # --- [Trainer Agent] Step 2: launch all candidates concurrently ----------
 echo "=== [$(date -Iseconds)] [Trainer Agent] launching ${#CANDIDATES[@]} runs in parallel (one GPU each) ==="
 PIDS=()
+MONITOR_PIDS=()
 for entry in "${CANDIDATES[@]}"; do
     IFS=':' read -r NAME IMGSZ BATCH DEVICE EXTRA_ARGS DESC <<< "$entry"
     CONFIG_FILE="$SCEN_DIR/configs/yolo11x_${NAME}_v2.env"
     bash scripts/ultralytics_run.sh "$CONFIG_FILE" "$TIME_BUDGET_MIN" &
     PIDS+=("$!")
     echo "  [Trainer Agent] launched $NAME on device $DEVICE (pid $!)"
+    poll_candidate "$NAME" "$DEVICE" "${CANDIDATE_LOGDIR[$NAME]}" "${CANDIDATE_NATIVE_CSV[$NAME]}" &
+    MONITOR_PIDS+=("$!")
+    echo "  [Monitor Agent] polling $NAME every ${MONITOR_INTERVAL_SEC}s -> ${CANDIDATE_LOGDIR[$NAME]}/{monitor.log,metrics.csv}"
 done
 
 echo "=== [$(date -Iseconds)] [Trainer Agent] waiting for all ${#PIDS[@]} runs to finish (budget ${TIME_BUDGET_MIN}min) ==="
 for pid in "${PIDS[@]}"; do
     wait "$pid"
+done
+for mpid in "${MONITOR_PIDS[@]}"; do
+    kill "$mpid" 2>/dev/null
 done
 echo "=== [$(date -Iseconds)] all parallel runs finished, handing off to Evaluator/Git-Ops Agents ==="
 
@@ -91,9 +154,8 @@ CURRENT_BEST="$BASELINE_BEST"
 BEST_NAME="baseline"
 for entry in "${CANDIDATES[@]}"; do
     IFS=':' read -r NAME IMGSZ BATCH DEVICE EXTRA_ARGS DESC <<< "$entry"
-    RUN_DIR="${CANDIDATE_RUNDIR[$NAME]}"
     COMMIT="${CANDIDATE_COMMIT[$NAME]}"
-    RUN_LOG="$RUN_DIR/run.log"
+    RUN_LOG="${CANDIDATE_LOGDIR[$NAME]}/run.log"
 
     METRIC_LINE=$(grep "^metric_value:" "$RUN_LOG" 2>/dev/null | tail -1)
     VRAM_LINE=$(grep "^peak_vram_mb:" "$RUN_LOG" 2>/dev/null | tail -1)
