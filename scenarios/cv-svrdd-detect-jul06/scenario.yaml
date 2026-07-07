@@ -12,8 +12,8 @@ baseline:
   value: 0.44222
   run_id: 16e6a59
 current_best:
-  value: 0.44222
-  run_id: 16e6a59
+  value: 0.49592
+  run_id: 36f246b
 status: looping
 notes:
   target_metric: "mAP50-95 > 0.9 (user-specified stretch goal; flagged as unrealistic for this task, see analysis_report.md). Loop continues to budget exhaustion regardless of whether target is reached."
