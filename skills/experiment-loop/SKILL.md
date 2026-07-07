@@ -15,11 +15,14 @@ This skill generalizes the loop from `opensource/autoresearch/program.md` (singl
 
 ## Roles in this loop
 
-This loop is executed by three specialist roles handing off to each other, not one undifferentiated "the agent". Read each role's `AGENT.md` before acting as it:
+This loop is executed by specialist roles handing off to each other, not one undifferentiated "the agent". Read each role's `AGENT.md` before acting as it:
 
 - **Trainer Agent** (`trainer/AGENT.md`) — makes the change, launches the run(s).
-- **Evaluator Agent** (`benchmark/AGENT.md`) — extracts/interprets the metric, detects crashes.
+- **Monitor Agent** (`monitor/AGENT.md`) — polls each run *while it is in progress* for loss/metric/GPU health, runs concurrently with the Trainer Agent's wait, never blocks it.
+- **Evaluator Agent** (`benchmark/AGENT.md`) — extracts/interprets the final metric, detects crashes.
 - **Git-Ops Agent** (`experiment_logs/AGENT.md`) — owns every commit/reset and the results ledger.
+
+All run logs (`run.log`, and the Monitor Agent's `monitor.log`/`metrics.csv`) live together under `experiment_logs/<tag>/runs/<candidate>/` — see `experiment_logs/SKILL.md`.
 
 ## Read-only vs. editable boundaries
 
@@ -42,8 +45,13 @@ LOOP FOREVER (until time budget for the scenario is exhausted or the human inter
    commit per candidate, always — this is what makes discard a clean revert.
 5. [Trainer] Launch the run via scripts/SKILL.md, using the engine wrapper
    convention: scripts/<engine>_run.sh <config> <time_budget_min>
-   Redirect all output to run.log. Do not let output flood your context —
-   read it back with targeted greps, not by dumping the whole file.
+   Output goes to experiment_logs/<tag>/runs/<candidate>/run.log. Do not let
+   output flood your context — read it back with targeted greps, not by
+   dumping the whole file.
+5b. [Monitor] Start polling this run concurrently (monitor/SKILL.md) —
+   writes experiment_logs/<tag>/runs/<candidate>/{monitor.log,metrics.csv}.
+   Runs independently of the Trainer Agent's wait; surfaces [ALERT] lines
+   for nan/inf loss or a suspected hang, but never kills the process itself.
 6. [Evaluator] Extract the metric from run.log per the fields defined in
    experiment_logs/SKILL.md (grep the metric_name/metric_value lines).
    - If the grep output is empty, the run crashed: tail the last ~50 lines
@@ -75,7 +83,10 @@ When two or more candidates from `improve_guide.md` are mutually independent (sa
    reverted per-candidate, which is what caused git-history drift in the
    cv-svrdd-detect-jul06 run). Record each commit hash against its candidate.
 4. [Trainer] Launch all N runs concurrently, one per idle GPU, each writing
-   its own run.log under its own run directory.
+   its own run.log under experiment_logs/<tag>/runs/<candidate>/.
+4b. [Monitor] Start one poller per candidate concurrently (monitor/SKILL.md),
+   writing monitor.log/metrics.csv alongside each run.log. Pollers run
+   independently of the Trainer Agent's wait and of each other.
 5. [Trainer] Wait for all N runs to finish (or be killed at ~2x budget).
 6. [Evaluator] Extract the metric from each run's run.log (crash detection
    per run, same as sequential mode).

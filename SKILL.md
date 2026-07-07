@@ -50,6 +50,7 @@ Each phase skill calls into these module skills to do concrete work, "worn" as t
 | `models/` | Model-Selection Agent | `models/SKILL.md` | Base model selection + network-architecture optimization per scenario |
 | `benchmark/` | Evaluator Agent | `benchmark/SKILL.md` | Evaluation benchmark selection and execution |
 | `trainer/` | Trainer Agent | `trainer/SKILL.md` | Pluggable training engine adapters (LLM/VLM/CV/NLP) |
+| `monitor/` | Monitor Agent | `monitor/SKILL.md` | In-progress run health polling (loss/metric/GPU) and basic anomaly alerts |
 | `scripts/` | (Trainer Agent tooling) | `scripts/SKILL.md` | Engine launch script generation and invocation |
 | `experiment_logs/` | Git-Ops Agent | `experiment_logs/SKILL.md` | Run logging format, results ledger, and git branch/commit/keep-discard operations |
 | `knowledge/` | Knowledge-Update Agent | `knowledge/SKILL.md` | Experience retrieval and write-back |

@@ -22,7 +22,7 @@ Where `<engine>` matches `trainer_engine` in `scenario.yaml` (`llama-factory`, `
 3. Enforce the time budget:
    - If the engine has a native time-based stop (e.g. ultralytics' `time=` argument), prefer it.
    - Otherwise, wrap the process so that it is asked to stop gracefully (allowing a checkpoint/log flush) once `time_budget_min` elapses — do not hard-kill (`SIGKILL`) as a first resort, since that can corrupt checkpoints or lose the final log lines needed for metric extraction.
-4. Write all stdout/stderr to `run.log` in the current working directory (the experiment loop redirects this itself when invoking the script — `uv run train.py > run.log 2>&1`-style — but the wrapper should not assume it needs to do this a second time; check the engine reference for the exact convention).
+4. Write all stdout/stderr to `experiment_logs/<tag>/runs/<candidate>/run.log` — **not** the engine's own `RUN_DIR`/checkpoint directory — per `experiment_logs/SKILL.md`'s centralized log-location convention. The wrapper should not assume it needs to redirect a second time if the caller already does; check the engine reference for the exact convention.
 5. Exit with a non-zero code on crash so the caller can detect failure without having to grep for absence of output.
 
 ## Creating a new wrapper script
