@@ -46,8 +46,19 @@ final gap to 0.9 is reported honestly in `final_report.md`.
 - Metric: `mAP50-95` (ultralytics native output from `results.csv`), `direction: maximize`, per `benchmark/references/cv.md` convention.
 - Eval set: the dataset's own `val.txt` (1000 held-out images), consistent with `datasets/SKILL.md` no-leakage guidance (separate city/tile stems from train).
 
+## Baseline results (final)
+
+| model | params (M) | epochs (early-stopped) | mAP50 | mAP50-95 | training time |
+|---|---|---|---|---|---|
+| **yolo11x (selected)** | 56.9 | 136 | 0.7068 | **0.4422** | 5.00h |
+| yolo26n | 2.5 | 329 (early-stopped @229) | 0.6441 | 0.3904 | 4.65h |
+
+`yolo11x` wins on `mAP50-95` by a clear margin (+0.052) despite ~23x more parameters — selected as `base_model` for
+the experiment loop. Per-class breakdown for `yolo11x`: weakest classes are Transverse Crack (0.358) and Pothole
+(0.379, the rarest class at 4.4% of instances) — both flagged as Phase 2 targets. `baseline.value = 0.44222`,
+commit `16e6a59`.
+
 ## Status
 
-`status: analyzing` — baseline runs in progress (see `scenarios/cv-svrdd-detect-jul06/scenario.yaml`). Once both
-finish, `baseline.value`/`current_best` will be filled in with whichever of `yolo11x`/`yolo26n` scores higher on
-`mAP50-95`, and Phase 2 (`improve_guide.md`) will be drafted.
+`status: looping` — Phase 1 complete, baseline established. See `improve_guide.md` for Phase 2 candidates and
+`experiment_logs/cv-svrdd-detect-jul06/experiment_results.csv` for live Phase 3 loop progress.

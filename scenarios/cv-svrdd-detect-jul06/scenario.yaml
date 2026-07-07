@@ -1,7 +1,7 @@
 tag: cv-svrdd-detect-jul06
 domain: cv
 task_type: object-detection
-base_model: TBD (candidates: yolo11x, yolo26n; groundingdino ruled out, see analysis_report.md)
+base_model: yolo11x (models/yolo11x/yolo11x.pt; beat yolo26n 0.4422 vs 0.3904 mAP50-95; groundingdino ruled out, see analysis_report.md)
 trainer_engine: ultralytics
 budget:
   time_budget_min: 300
@@ -9,11 +9,11 @@ metric:
   name: mAP50-95
   direction: maximize
 baseline:
-  value: null
-  run_id: null
+  value: 0.44222
+  run_id: 16e6a59
 current_best:
-  value: null
-  run_id: null
-status: analyzing
+  value: 0.44222
+  run_id: 16e6a59
+status: looping
 notes:
   target_metric: "mAP50-95 > 0.9 (user-specified stretch goal; flagged as unrealistic for this task, see analysis_report.md). Loop continues to budget exhaustion regardless of whether target is reached."
