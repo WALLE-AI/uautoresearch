@@ -32,7 +32,15 @@ Where `<engine>` matches `trainer_engine` in `scenario.yaml` (`llama-factory`, `
 3. Test it once manually with a short `time_budget_min` (e.g. 1-2 minutes) before handing it to the experiment loop, to confirm it actually launches, enforces the budget, and writes a parseable `run.log`.
 4. Keep the script itself simple — logic that decides *what* to change belongs in `skills/experiment-loop/SKILL.md` and `improve_guide.md`, not in the launch script.
 
+## Loop driver: sequential vs. parallel
+
+`scripts/<engine>_run.sh` launches exactly **one** run. The Trainer/Git-Ops Agents drive the loop itself (per `skills/experiment-loop/SKILL.md`):
+
+- **Sequential mode (default)**: the agent calls `scripts/<engine>_run.sh` once per iteration directly, interleaved with its own commit/reset/log steps. No extra driver script is needed.
+- **Parallel mode (independent candidates, multi-GPU host)**: use `scripts/loop_driver_template.sh` as the starting point rather than hand-writing a new one-off driver per scenario. It implements the per-candidate-commit / per-candidate-keep-discard pattern from `skills/experiment-loop/SKILL.md`'s parallel mode — copy it into `scenarios/<tag>/` and fill in the `CANDIDATES` array, `BASE_MODEL`, `DATA_YAML`/config path, and `BASELINE_BEST`. Do not batch all candidates into a single commit (see `experiment_logs/AGENT.md`'s hard rule) — the template already commits each candidate separately.
+
 ## Notes
 
 - Do not let the wrapper script silently swallow errors — if the underlying engine command fails to even start (e.g. bad config path), that should be obvious in `run.log`, not hidden behind a generic "crash" with no trace.
 - Keep wrapper scripts engine-specific and thin; do not build a single mega-script that branches on engine name internally — one script per engine is easier to keep correct as engines evolve.
+- The parallel loop driver is generic across engines (it only shells out to `scripts/<engine>_run.sh`) — do not fork per-engine copies of it; parameterize instead.

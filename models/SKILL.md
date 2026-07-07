@@ -33,15 +33,28 @@ Picks the right starting point so later experimentation isn't wasted compensatin
 - Classification/understanding tasks with moderate data → encoder-only pretrained model (e.g. BERT/RoBERTa family) fine-tuned with `transformers.Trainer`.
 - Generation tasks → decoder or encoder-decoder pretrained model sized to the data/compute budget.
 
-## Steps
+## Steps (Phase 1 — baseline selection)
 
 1. Read the scenario's domain/task_type and the data summary.
 2. Shortlist 1-3 candidate base models/architectures using the guidance above.
 3. Check each candidate is actually trainable with the `trainer_engine` already chosen (or help choose the engine jointly with `trainer/SKILL.md` if not yet decided) and fits the available VRAM at a reasonable batch size.
-4. Recommend one as the baseline choice for `scenario.yaml`'s `base_model` field; list the others as Tier-1 candidates for `improve_guide.md` if relevant.
+4. Recommend one as the baseline choice for `scenario.yaml`'s `base_model` field.
 5. Record the rationale briefly — this feeds into `analysis_report.md` and later into `knowledge/SKILL.md`.
+
+## Network-architecture optimization (Phase 2 — separate from baseline selection)
+
+This is a distinct output from step 4 above, produced when `skills/experiment-design/SKILL.md` asks for Tier-1 (architecture) candidates for `improve_guide.md`. Do not fold these into the baseline recommendation — they are things to *try changing* from the baseline, not the baseline itself.
+
+Propose candidates at the architecture level, not the hyperparameter level (hyperparameters belong to the Trainer Agent's tiers 3-6 in `skills/experiment-design/SKILL.md`):
+
+- **CV**: backbone swap (e.g. yolo11x -> rtdetr_v2), neck/FPN variant, detection/segmentation head design, multi-scale input handling, EMA.
+- **LLM**: LoRA target-module set/rank tier as an architecture-shape choice (not the LR that trains it), attention variant if the engine supports swapping it.
+- **VLM**: vision-encoder freeze/unfreeze boundary, projector architecture (MLP vs. Q-Former-style), multi-stage training topology (align-then-instruct vs. joint).
+- **NLP**: encoder vs. encoder-decoder choice, pooling/classification-head design.
+
+For each candidate: confirm with the Trainer Agent (`trainer/AGENT.md`) that the chosen `trainer_engine` can actually train it end-to-end before adding it to `improve_guide.md` — an architecture idea the engine can't run is not a valid candidate, no matter how promising on paper.
 
 ## Notes
 
 - Prefer well-supported, widely-used checkpoints over exotic ones — training engine compatibility and community-known quirks matter more than marginal benchmark differences at baseline stage.
-- If `knowledge/SKILL.md` shows a specific model already failed for a very similar scenario, do not re-propose it without addressing why it failed.
+- If `knowledge/SKILL.md` shows a specific model or architecture change already failed for a very similar scenario, do not re-propose it without addressing why it failed.

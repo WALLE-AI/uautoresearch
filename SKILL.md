@@ -39,20 +39,22 @@ Do not try to do the work described below yourself from memory. Read the referen
 4. **A `scenarios/<tag>/` run just finished (budget exhausted or user stopped it) and results have not been folded back into `knowledge/`**: run Phase 4.
 5. If the user's request only concerns one specific module (e.g. "just tell me what training engine to use" or "update the dataset README"), skip straight to that module's `SKILL.md` (see table below) instead of going through the phase pipeline.
 
-## Module skills (capability layer)
+## Module skills (capability layer) and their agent roles
 
-Each phase skill calls into these module skills to do concrete work. Each module directory keeps a `README.md` (human-facing "what this is") alongside its `SKILL.md` (agent-facing "how to do it").
+Each phase skill calls into these module skills to do concrete work, "worn" as the specialist role listed below (see `AGENTS.md` for the full role table and `<module>/AGENT.md` for each role's identity/boundary/hand-off). Each module directory keeps a `README.md` (human-facing "what this is"), `AGENT.md` (agent-facing "who does this") and `SKILL.md` (agent-facing "how to do it").
 
-| Module | Skill file | Responsibility |
-|---|---|---|
-| `scenarios/` | `scenarios/SKILL.md` | Scenario record management: `scenario.yaml`, `analysis_report.md`, `improve_guide.md` |
-| `datasets/` | `datasets/SKILL.md` | Dataset EDA and dataset construction/synthesis |
-| `models/` | `models/SKILL.md` | Base model / architecture selection per scenario |
-| `benchmark/` | `benchmark/SKILL.md` | Evaluation benchmark selection and execution |
-| `trainer/` | `trainer/SKILL.md` | Pluggable training engine adapters (LLM/VLM/CV/NLP) |
-| `scripts/` | `scripts/SKILL.md` | Engine launch script generation and invocation |
-| `experiment_logs/` | `experiment_logs/SKILL.md` | Run logging format and results ledger |
-| `knowledge/` | `knowledge/SKILL.md` | Experience retrieval and write-back |
+| Module | Agent role | Skill file | Responsibility |
+|---|---|---|---|
+| `scenarios/` | Scenario-Analysis Agent | `scenarios/SKILL.md` | Scenario record management: `scenario.yaml`, `analysis_report.md`, `improve_guide.md` |
+| `datasets/` | Dataset-Analysis Agent | `datasets/SKILL.md` | Dataset EDA and dataset construction/synthesis |
+| `models/` | Model-Selection Agent | `models/SKILL.md` | Base model selection + network-architecture optimization per scenario |
+| `benchmark/` | Evaluator Agent | `benchmark/SKILL.md` | Evaluation benchmark selection and execution |
+| `trainer/` | Trainer Agent | `trainer/SKILL.md` | Pluggable training engine adapters (LLM/VLM/CV/NLP) |
+| `scripts/` | (Trainer Agent tooling) | `scripts/SKILL.md` | Engine launch script generation and invocation |
+| `experiment_logs/` | Git-Ops Agent | `experiment_logs/SKILL.md` | Run logging format, results ledger, and git branch/commit/keep-discard operations |
+| `knowledge/` | Knowledge-Update Agent | `knowledge/SKILL.md` | Experience retrieval and write-back |
+
+`scripts/` has no dedicated `AGENT.md` — it is tooling invoked by the Trainer Agent, not a separate role.
 
 ## Core principles (do not violate these)
 
