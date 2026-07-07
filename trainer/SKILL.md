@@ -36,7 +36,7 @@ scripts/<engine>_run.sh <config> <time_budget_min>
 The wrapper script (built via `scripts/SKILL.md`) is responsible for:
 - Passing `<config>` through to the underlying engine's native config format (yaml/json/CLI args).
 - Enforcing the time budget: either via the engine's native max-time/max-steps setting, or by having the wrapper itself terminate the process gracefully (checkpoint if possible) when `time_budget_min` elapses.
-- Writing all stdout/stderr to `run.log`.
+- Writing all stdout/stderr to `experiment_logs/<tag>/runs/<candidate>/run.log` — **not** into the engine's own `RUN_DIR`/checkpoint directory (that directory still holds weights/artifacts/native results files; only the log text is centralized). See `experiment_logs/SKILL.md`.
 
 ### Read-only vs editable boundary (general rule)
 

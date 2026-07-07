@@ -7,6 +7,17 @@ description: Define and apply the unified run.log field format and the experimen
 
 Keeps every experiment — regardless of domain or trainer engine — comparable and greppable, mirroring the `results.tsv` convention from `opensource/autoresearch`.
 
+## `run.log` location
+
+Every training run's `run.log` lives at `experiment_logs/<tag>/runs/<candidate>/run.log` — **not** inside the trainer engine's own checkpoint/output directory (`RUN_DIR`), which stays wherever the engine writes weights/artifacts. This keeps every log centralized under `experiment_logs/` regardless of domain or engine, and is where the Monitor Agent (`monitor/SKILL.md`) also writes its `monitor.log`/`metrics.csv` for the same candidate:
+
+```
+experiment_logs/<tag>/runs/<candidate>/
+    run.log        # Trainer Agent / engine wrapper output (this section's fields)
+    monitor.log    # Monitor Agent's polling record + [ALERT] lines (Phase 3 only)
+    metrics.csv    # Monitor Agent's time-series snapshots (Phase 3 only)
+```
+
 ## `run.log` fields
 
 Every trainer engine wrapper (see `trainer/SKILL.md`, `scripts/SKILL.md`) must ensure these fields appear as `key: value` lines somewhere in `run.log`, so they can be extracted with a simple grep:

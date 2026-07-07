@@ -4,12 +4,12 @@ You are operating in a Markdown-driven **multi-agent** autonomous research frame
 
 This repo does not have a custom Python orchestrator process. All "who am I / what do I do" knowledge lives in two layers of Markdown:
 
-- **`AGENT.md`** files (repo root + one per module: `scenarios/`, `datasets/`, `models/`, `trainer/`, `benchmark/`, `experiment_logs/`, `knowledge/`) — define a **role**: identity, inputs, outputs, editable/read-only boundary, and hand-off/termination condition. Read the `AGENT.md` for the role you are about to assume *before* doing its work.
+- **`AGENT.md`** files (repo root + one per module: `scenarios/`, `datasets/`, `models/`, `trainer/`, `benchmark/`, `experiment_logs/`, `knowledge/`, `monitor/`) — define a **role**: identity, inputs, outputs, editable/read-only boundary, and hand-off/termination condition. Read the `AGENT.md` for the role you are about to assume *before* doing its work.
 - **`SKILL.md`** files (root, `skills/<phase>/SKILL.md`, `<module>/SKILL.md`) — define **how** to do the work once you've assumed a role. Treat each as an instruction set you must actually open and follow — do not guess its contents from the filename.
 
 ## Roles (sub-agents)
 
-There is one **Orchestrator** (whichever session/engine is currently driving) and 7 specialist roles it delegates to. Only one role is "worn" at a time within a single-agent execution engine (Windsurf/Cascade); engines that support true parallel sub-agents (see `engines/`) may run several simultaneously where the role boundaries allow it (e.g. multiple Trainer instances for independent candidates).
+There is one **Orchestrator** (whichever session/engine is currently driving) and 8 specialist roles it delegates to. Only one role is "worn" at a time within a single-agent execution engine (Windsurf/Cascade); engines that support true parallel sub-agents (see `engines/`) may run several simultaneously where the role boundaries allow it (e.g. multiple Trainer instances for independent candidates, or a Monitor Agent running concurrently with the Trainer Agent it watches).
 
 | # | Role | Role card | Phase(s) |
 |---|---|---|---|
@@ -18,11 +18,12 @@ There is one **Orchestrator** (whichever session/engine is currently driving) an
 | 2 | Dataset-Analysis Agent | `datasets/AGENT.md` | Phase 1, Phase 3 fallback |
 | 3 | Model-Selection Agent | `models/AGENT.md` | Phase 1, Phase 2 |
 | 4 | Trainer Agent | `trainer/AGENT.md` | Phase 3 |
-| 5 | Evaluator Agent | `benchmark/AGENT.md` | Phase 1, Phase 3 |
-| 6 | Git-Ops Agent | `experiment_logs/AGENT.md` | Phase 3 |
-| 7 | Knowledge-Update Agent | `knowledge/AGENT.md` | Phase 4 |
+| 5 | Monitor Agent | `monitor/AGENT.md` | Phase 3 (concurrent with Trainer Agent) |
+| 6 | Evaluator Agent | `benchmark/AGENT.md` | Phase 1, Phase 3 |
+| 7 | Git-Ops Agent | `experiment_logs/AGENT.md` | Phase 3 |
+| 8 | Knowledge-Update Agent | `knowledge/AGENT.md` | Phase 4 |
 
-See `engines/windsurf.md`, `engines/cursor.md`, `engines/codex.md`, `engines/opencode.md` for how to declare these 7 roles as native sub-agents/rules/workflows in each execution engine.
+See `engines/windsurf.md`, `engines/cursor.md`, `engines/codex.md`, `engines/opencode.md` for how to declare these 8 roles as native sub-agents/rules/workflows in each execution engine.
 
 ## Minimal workflow
 

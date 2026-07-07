@@ -8,6 +8,10 @@
 # with EACH candidate committed and kept/discarded INDEPENDENTLY (never
 # batched into one commit) so git history stays cleanly revertible.
 #
+# Also starts one Monitor Agent poller per candidate (monitor/SKILL.md),
+# writing monitor.log/metrics.csv alongside run.log for real-time health
+# visibility while the runs are in progress.
+#
 # Usage: bash loop_driver_template.sh
 
 set -uo pipefail
@@ -32,12 +36,51 @@ DOMAIN="cv"                          # from scenario.yaml
 CANDIDATES=(
     # "name:extra_field1:extra_field2:...:description"
 )
+
+# Centralized log dir per candidate (run.log + Monitor Agent's monitor.log/
+# metrics.csv). Engine-specific RUN_DIR (weights/native results) is separate.
+RUNS_DIR="$LOG_DIR/runs"
+MONITOR_INTERVAL_SEC=300
 # =============================================================================
 
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" "$RUNS_DIR"
 if [[ ! -f "$RESULTS_CSV" ]]; then
     echo "commit,metric_value,peak_vram_gb,status,domain,engine,description" > "$RESULTS_CSV"
 fi
+
+# --- [Monitor Agent] poller: one per candidate, backgrounded, independent
+# of the Trainer Agent's wait. See monitor/SKILL.md for the full contract.
+# Engine-specific: fill in how to read the latest loss/metric for $NAME
+# (e.g. tail its native results.csv) where marked below.
+poll_candidate() {
+    local name="$1" device="$2" run_log_dir="$3"
+    local metrics_csv="$run_log_dir/metrics.csv" monitor_log="$run_log_dir/monitor.log"
+    echo "timestamp,loss,metric_value,gpu_util,gpu_mem_mb" > "$metrics_csv"
+    local zero_streak=0
+    while true; do
+        if [[ -f "$run_log_dir/run.log" ]] && grep -q "^metric_value:" "$run_log_dir/run.log" 2>/dev/null; then
+            break
+        fi
+        local ts loss metric gpu_util gpu_mem
+        ts=$(date -Iseconds)
+        # >>> engine-specific: set loss/metric from this candidate's native
+        # progress file here (e.g. ultralytics RUN_DIR/train/results.csv) <<<
+        loss=""; metric=""
+        read -r gpu_util gpu_mem <<< "$(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits -i "$device" 2>/dev/null | tr ',' ' ')"
+        echo "$ts,$loss,$metric,$gpu_util,$gpu_mem" >> "$metrics_csv"
+        echo "[$ts] $name: loss=$loss metric=$metric gpu_util=${gpu_util}% gpu_mem=${gpu_mem}MB" >> "$monitor_log"
+        if [[ "$loss" == "nan" || "$loss" == "inf" ]]; then
+            echo "[ALERT] loss=$loss at $ts" >> "$monitor_log"
+        fi
+        if [[ "$gpu_util" == "0" ]]; then
+            zero_streak=$((zero_streak + 1))
+            [[ "$zero_streak" -eq 3 ]] && echo "[ALERT] gpu_util=0 for 3 consecutive polls, possible hang" >> "$monitor_log"
+        else
+            zero_streak=0
+        fi
+        sleep "$MONITOR_INTERVAL_SEC"
+    done
+}
 
 cd "$REPO_DIR"
 
@@ -65,14 +108,20 @@ for entry in "${CANDIDATES[@]}"; do
 done
 
 # --- Step 2: launch all candidates concurrently, one per idle GPU ----------
+# (fill in DEVICE_OF[$NAME] below to match each candidate's assigned GPU)
 echo "=== [$(date -Iseconds)] launching ${#CANDIDATES[@]} runs in parallel ==="
 PIDS=()
 for entry in "${CANDIDATES[@]}"; do
     NAME="${entry%%:*}"
     CONFIG_FILE="$SCEN_DIR/configs/${ENGINE}_${NAME}.cfg"
+    RUN_LOG_DIR="$RUNS_DIR/$NAME"
+    mkdir -p "$RUN_LOG_DIR"
     bash "$RUN_SCRIPT" "$CONFIG_FILE" "$TIME_BUDGET_MIN" &
     PIDS+=("$!")
-    echo "  launched $NAME (pid $!)"
+    echo "  [Trainer Agent] launched $NAME (pid $!)"
+    # >>> engine-specific: pass the correct device for $NAME here <<<
+    poll_candidate "$NAME" "0" "$RUN_LOG_DIR" &
+    echo "  [Monitor Agent] polling $NAME -> $RUN_LOG_DIR/{monitor.log,metrics.csv}"
 done
 
 echo "=== [$(date -Iseconds)] waiting for all ${#PIDS[@]} runs to finish ==="
@@ -88,8 +137,7 @@ for entry in "${CANDIDATES[@]}"; do
     DESC="${entry##*:}"
     COMMIT="${CANDIDATE_COMMIT[$NAME]}"
 
-    # >>> engine-specific: locate this candidate's run.log and RUN_DIR <<<
-    RUN_LOG="/path/to/checkpoints/${NAME}/run.log"
+    RUN_LOG="$RUNS_DIR/$NAME/run.log"
 
     METRIC_LINE=$(grep "^metric_value:" "$RUN_LOG" 2>/dev/null | tail -1)
     VRAM_LINE=$(grep "^peak_vram_mb:" "$RUN_LOG" 2>/dev/null | tail -1)

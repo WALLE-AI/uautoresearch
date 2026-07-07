@@ -13,10 +13,16 @@
 #   EPOCHS           upper bound on epochs (time budget is the real cutoff via `time=`)
 #   DEVICE           GPU device string, e.g. "0" or "0,1,2,3,4,5,6,7" (default 0)
 #   RUN_DIR          absolute path, must be unique per experiment iteration
+#                    (holds ultralytics' native weights/results.csv artifacts)
+#   LOG_DIR          absolute path, must be unique per experiment iteration
+#                    (holds run.log; defaults to RUN_DIR if unset, for
+#                    backward compat, but should be set to
+#                    experiment_logs/<tag>/runs/<candidate> per
+#                    experiment_logs/SKILL.md's centralized log convention)
 #   EXTRA_ARGS       (optional) extra ultralytics CLI args, e.g. "lr0=0.001 mosaic=0.0"
 #
-# Writes run.log in RUN_DIR with the six unified fields required by
-# experiment_logs/SKILL.md.
+# Writes run.log in LOG_DIR (falls back to RUN_DIR) with the six unified
+# fields required by experiment_logs/SKILL.md.
 
 set -uo pipefail
 
@@ -39,9 +45,10 @@ BATCH="${BATCH:--1}"
 EPOCHS="${EPOCHS:-1000}"
 DEVICE="${DEVICE:-0}"
 EXTRA_ARGS="${EXTRA_ARGS:-}"
+LOG_DIR="${LOG_DIR:-$RUN_DIR}"
 
-mkdir -p "$RUN_DIR"
-LOG_FILE="$RUN_DIR/run.log"
+mkdir -p "$RUN_DIR" "$LOG_DIR"
+LOG_FILE="$LOG_DIR/run.log"
 TIME_HOURS=$(python3 -c "print(${TIME_BUDGET_MIN} / 60.0)")
 
 START_TS=$(date +%s)
