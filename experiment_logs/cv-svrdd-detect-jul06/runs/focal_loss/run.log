@@ -1,0 +1,62 @@
+=== ultralytics_run.sh starting 2026-07-07T18:40:03+00:00 ===
+config: /home/dataset1/gaojing/uautoresearch/scenarios/cv-svrdd-detect-jul06/configs/yolo11x_focal_loss_v2.env
+data_yaml: /home/dataset1/gaojing/uautoresearch/scenarios/cv-svrdd-detect-jul06/configs/data.yaml
+base_model: /home/dataset1/gaojing/xibeiyuan/models/yolo11x/yolo11x.pt
+run_dir: /home/dataset1/gaojing/xibeiyuan/checkpoints/svrdd_yolo11x_focal_loss_v2
+imgsz: 640  batch: 32  epochs: 1000  device: 2  time_budget_min: 300
+Traceback (most recent call last):
+  File "/home/dataset1/gaojing/anaconda3/bin/yolo", line 8, in <module>
+    sys.exit(entrypoint())
+             ^^^^^^^^^^^^
+  File "/home/dataset1/gaojing/anaconda3/lib/python3.12/site-packages/ultralytics/cfg/__init__.py", line 1004, in entrypoint
+    check_dict_alignment(full_args_dict, overrides)
+  File "/home/dataset1/gaojing/anaconda3/lib/python3.12/site-packages/ultralytics/cfg/__init__.py", line 593, in check_dict_alignment
+    raise SyntaxError(string + CLI_HELP_MSG) from e
+SyntaxError: '[31m[1mfl_gamma[0m' is not a valid YOLO argument. 
+
+    Arguments received: ['yolo', 'detect', 'train', 'data=/home/dataset1/gaojing/uautoresearch/scenarios/cv-svrdd-detect-jul06/configs/data.yaml', 'model=/home/dataset1/gaojing/xibeiyuan/models/yolo11x/yolo11x.pt', 'imgsz=640', 'batch=32', 'epochs=1000', 'time=5.0', 'device=2', 'project=/home/dataset1/gaojing/xibeiyuan/checkpoints/svrdd_yolo11x_focal_loss_v2', 'name=train', 'exist_ok=True', 'fl_gamma=1.5']. Ultralytics 'yolo' commands use the following syntax:
+
+        yolo TASK MODE ARGS
+
+        Where   TASK (optional) is one of ['pose', 'detect', 'classify', 'semantic', 'segment', 'obb']
+                MODE (required) is one of ['predict', 'export', 'track', 'val', 'benchmark', 'train']
+                ARGS (optional) are any number of custom 'arg=value' pairs like 'imgsz=320' that override defaults.
+                    See all ARGS at https://docs.ultralytics.com/usage/cfg or with 'yolo cfg'
+
+    1. Train a detection model for 10 epochs with an initial learning_rate of 0.01
+        yolo train data=coco8.yaml model=yolo26n.pt epochs=10 lr0=0.01
+
+    2. Predict a YouTube video using a pretrained segmentation model at image size 320:
+        yolo predict model=yolo26n-seg.pt source='https://youtu.be/LNwODJXcvt4' imgsz=320
+
+    3. Validate a pretrained detection model at batch-size 1 and image size 640:
+        yolo val model=yolo26n.pt data=coco8.yaml batch=1 imgsz=640
+
+    4. Export a YOLO26n classification model to ONNX format at image size 224 by 128 (no TASK required)
+        yolo export model=yolo26n-cls.pt format=onnx imgsz=224,128
+
+    5. Ultralytics solutions usage
+        yolo solutions count or any of ['crop', 'blur', 'workout', 'heatmap', 'isegment', 'visioneye', 'speed', 'queue', 'analytics', 'inference', 'trackzone', 'region', 'security', 'parking'] source="path/to/video.mp4"
+
+    6. Run special commands:
+        yolo help
+        yolo checks
+        yolo version
+        yolo settings
+        yolo copy-cfg
+        yolo cfg
+        yolo solutions help
+
+    Docs: https://docs.ultralytics.com
+    Solutions: https://docs.ultralytics.com/solutions/
+    Community: https://community.ultralytics.com
+    GitHub: https://github.com/ultralytics/ultralytics
+    
+=== ultralytics train exited with status 1 ===
+metric_name: mAP50-95
+metric_value: 0.0
+training_seconds: 0.0
+total_seconds: 2
+peak_vram_mb: 4
+num_params_M: 0.0
+CRASH: ultralytics training did not produce results.csv (status=1)
