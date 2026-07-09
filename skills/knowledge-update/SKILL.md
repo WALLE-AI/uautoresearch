@@ -15,7 +15,7 @@ Every finished scenario run should leave the `knowledge/` base a little smarter.
    - Any hyperparameter ranges that worked well or clearly did not, for this domain/task_type/model size.
    - Data strategies that helped or hurt.
    - Failure modes worth remembering (e.g. "LoRA rank > 64 OOMs on this GPU with this batch size", "this augmentation policy hurt mAP on small objects").
-3. **Delegate the actual write to `knowledge/SKILL.md`**, which knows the file layout and format for the experience base. Do not write directly into `knowledge/` files without following its conventions.
+3. **Delegate the actual write to `knowledge/SKILL.md`**, which knows the file layout and structured Knowledge Card format for the experience base. Do not write directly into `knowledge/` files without following its conventions.
 4. **Produce `scenarios/<tag>/final_report.md`** summarizing the whole run for the human:
 
 ```markdown
@@ -36,3 +36,4 @@ When `skills/scenario-analysis/SKILL.md` runs its 7-dimension diagnosis (specifi
 
 - Do not fabricate learnings — only record what the logged experiments actually show.
 - Keep entries scoped and attributable (which scenario/tag they came from) so future contradictory evidence can update rather than duplicate them.
+- This skill **always runs** at the end of Phase 3, regardless of whether `scenario.yaml`'s target metric was reached. If it was not reached, the Orchestrator routes back to the Training-Plan Agent (`planning/AGENT.md`) for re-planning immediately after this skill finishes — do not mark the scenario `status: done` in that case.

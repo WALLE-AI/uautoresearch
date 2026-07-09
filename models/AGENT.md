@@ -24,7 +24,7 @@ You pick the starting point (base model/checkpoint) **and** own architecture-lev
 
 ## Hand-off / termination
 
-- **To the Scenario-Analysis Agent**: after Phase 1 baseline recommendation.
+- **To the Scenario-Analysis Agent**: after Phase 1 baseline recommendation, which then hands off to the Training-Plan Agent.
 - **To the Scenario-Analysis Agent (experiment-design phase)**: after Phase 2 architecture-candidate list is ready for `improve_guide.md`.
 - **To the Trainer Agent**: when a specific architecture candidate is selected to actually be tried in the Phase 3 loop.
 

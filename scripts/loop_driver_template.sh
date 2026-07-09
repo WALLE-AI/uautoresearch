@@ -5,8 +5,9 @@
 # Implements the pattern from skills/experiment-loop/SKILL.md's "Parallel
 # mode" section: N mutually-independent single-variable candidates from
 # improve_guide.md, launched one per idle GPU via scripts/<engine>_run.sh,
-# with EACH candidate committed and kept/discarded INDEPENDENTLY (never
-# batched into one commit) so git history stays cleanly revertible.
+# with EACH candidate given its OWN config file (copied from current_best,
+# never edited in place) and kept/discarded INDEPENDENTLY. There is no git
+# commit/revert step anywhere in this framework.
 #
 # Also starts one Monitor Agent poller per candidate (monitor/SKILL.md),
 # writing monitor.log/metrics.csv alongside run.log for real-time health
@@ -25,6 +26,7 @@ ENGINE="ultralytics"                 # matches trainer_engine in scenario.yaml
 RUN_SCRIPT="scripts/${ENGINE}_run.sh"
 TIME_BUDGET_MIN=300
 BASELINE_BEST=0.0                    # current_best.value from scenario.yaml
+BASELINE_CONFIG="$SCEN_DIR/configs/baseline.cfg"  # current_best.config_path
 METRIC_DIRECTION="maximize"          # maximize | minimize, from scenario.yaml
 DOMAIN="cv"                          # from scenario.yaml
 
@@ -43,9 +45,9 @@ RUNS_DIR="$LOG_DIR/runs"
 MONITOR_INTERVAL_SEC=300
 # =============================================================================
 
-mkdir -p "$LOG_DIR" "$RUNS_DIR"
+mkdir -p "$LOG_DIR" "$RUNS_DIR" "$SCEN_DIR/configs"
 if [[ ! -f "$RESULTS_CSV" ]]; then
-    echo "commit,metric_value,peak_vram_gb,status,domain,engine,description" > "$RESULTS_CSV"
+    echo "candidate,config_path,metric_value,peak_vram_gb,status,domain,engine,description" > "$RESULTS_CSV"
 fi
 
 # --- [Monitor Agent] poller: one per candidate, backgrounded, independent
@@ -89,22 +91,20 @@ if [[ "${#CANDIDATES[@]}" -eq 0 ]]; then
     exit 1
 fi
 
-# --- Step 1: commit EACH candidate's config as its OWN separate commit -----
-# (Never combine into one batch commit — see experiment_logs/AGENT.md's hard
-# rule. Per-candidate commits are what makes per-candidate discard a clean
-# `git reset` instead of leaving abandoned config files in history.)
-echo "=== [$(date -Iseconds)] writing + committing ${#CANDIDATES[@]} candidate configs (one commit each) ==="
-declare -A CANDIDATE_COMMIT
+# --- Step 1: write EACH candidate its OWN new config file, copied from ----
+# BASELINE_CONFIG (current_best) and never edited in place. This is what
+# replaces git commit-per-candidate: provenance is the config_path itself.
+echo "=== [$(date -Iseconds)] writing ${#CANDIDATES[@]} candidate configs (one new file each) ==="
+declare -A CANDIDATE_CONFIG
 for entry in "${CANDIDATES[@]}"; do
     NAME="${entry%%:*}"
     CONFIG_FILE="$SCEN_DIR/configs/${ENGINE}_${NAME}.cfg"
+    cp "$BASELINE_CONFIG" "$CONFIG_FILE"
 
-    # >>> engine-specific: write CONFIG_FILE from $entry's fields here <<<
+    # >>> engine-specific: apply $entry's fields as edits to CONFIG_FILE here <<<
 
-    git add "$CONFIG_FILE"
-    git commit -m "experiment(<tag>): candidate $NAME" -q
-    CANDIDATE_COMMIT["$NAME"]=$(git rev-parse --short=7 HEAD)
-    echo "  committed $NAME -> ${CANDIDATE_COMMIT[$NAME]}"
+    CANDIDATE_CONFIG["$NAME"]="$CONFIG_FILE"
+    echo "  wrote $NAME -> $CONFIG_FILE"
 done
 
 # --- Step 2: launch all candidates concurrently, one per idle GPU ----------
@@ -132,10 +132,11 @@ done
 # --- Step 3: evaluate + keep/discard EACH candidate independently ---------
 echo "=== [$(date -Iseconds)] processing results, one candidate at a time ==="
 CURRENT_BEST="$BASELINE_BEST"
+CURRENT_BEST_CONFIG="$BASELINE_CONFIG"
 for entry in "${CANDIDATES[@]}"; do
     NAME="${entry%%:*}"
     DESC="${entry##*:}"
-    COMMIT="${CANDIDATE_COMMIT[$NAME]}"
+    CANDIDATE_CFG="${CANDIDATE_CONFIG[$NAME]}"
 
     RUN_LOG="$RUNS_DIR/$NAME/run.log"
 
@@ -162,22 +163,26 @@ for entry in "${CANDIDATES[@]}"; do
         fi
     fi
 
-    echo "$COMMIT,$METRIC_VALUE,$PEAK_VRAM_GB,$STATUS,$DOMAIN,$ENGINE,$NAME: $DESC" >> "$RESULTS_CSV"
-    echo "  $NAME -> status=$STATUS metric=$METRIC_VALUE (commit $COMMIT)"
+    echo "$NAME,$CANDIDATE_CFG,$METRIC_VALUE,$PEAK_VRAM_GB,$STATUS,$DOMAIN,$ENGINE,$DESC" >> "$RESULTS_CSV"
+    echo "  $NAME -> status=$STATUS metric=$METRIC_VALUE (config $CANDIDATE_CFG)"
 
     if [[ "$STATUS" == "keep" ]]; then
-        # Branch advances on this candidate's own commit; no other pending
-        # commit is affected. Update scenario.yaml's current_best here.
+        # No git branch to advance — just point current_best at this
+        # candidate's own config file. Update scenario.yaml's current_best
+        # (value, config_path, candidate) here.
         CURRENT_BEST="$METRIC_VALUE"
+        CURRENT_BEST_CONFIG="$CANDIDATE_CFG"
     elif [[ "$STATUS" == "discard" ]]; then
-        # Revert ONLY this candidate's commit, independently of the others.
-        # If this commit is not HEAD (other candidates' commits came after),
-        # use `git rebase --onto` or cherry-pick-based removal instead of a
-        # blind `git reset` to avoid discarding kept candidates too.
-        git revert --no-edit "$COMMIT" -q || echo "  WARNING: manual revert needed for $COMMIT ($NAME)"
+        # Nothing to revert — this candidate's config file simply stays on
+        # disk, unreferenced by current_best. Safe to leave it or clean it
+        # up later; it never affects any other candidate.
+        :
     fi
 done
 
 echo "=== [$(date -Iseconds)] batch complete. Results: ==="
 cat "$RESULTS_CSV"
-echo "=== Next: continue the loop (step 1) or, if budget exhausted, hand off to skills/knowledge-update/SKILL.md ==="
+echo "=== current_best is now: $CURRENT_BEST ($CURRENT_BEST_CONFIG) ==="
+echo "=== Next: check scenario.yaml's metric.target for PASS/FAIL, then either"
+echo "=== continue the loop (step 1) or, if PASS or budget exhausted, hand off"
+echo "=== to skills/knowledge-update/SKILL.md ==="

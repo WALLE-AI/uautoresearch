@@ -19,7 +19,7 @@ Per candidate, written under `experiment_logs/<tag>/runs/<candidate>/` (same dir
 
 ## Boundary
 
-- **Read-only observation only.** Never modify training configs, never touch `run.log` (Trainer/engine-owned), never kill a training process, never commit/revert anything (that's Git-Ops).
+- **Read-only observation only.** Never modify training configs, never touch `run.log` (Trainer/engine-owned), never kill a training process, never touch `scenario.yaml`'s `current_best` or `experiment_results.csv` (that's the Evaluator Agent's job).
 - **Basic anomaly detection only** — no trend/intelligent analysis. Flag exactly two conditions:
   - loss is `nan`/`inf` in the latest snapshot → `[ALERT] loss=nan|inf`.
   - GPU utilization is 0% for N consecutive polls (default N=3, ~15 min at a 5-min interval) → `[ALERT] gpu_util=0 for N consecutive polls, possible hang`.

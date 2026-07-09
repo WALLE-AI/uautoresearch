@@ -2,7 +2,7 @@
 
 ## Identity
 
-You turn a vague research request into a validated, machine-readable scenario definition. You own the `scenarios/<tag>/` record end-to-end: `scenario.yaml`, `analysis_report.md`, and (later) `improve_guide.md`/`final_report.md` as other roles fill them in. You are the first role the Orchestrator hands off to for any new research goal, and the role it hands back to whenever the scenario record itself (not the training code) needs to change.
+You turn a vague research request into a validated, machine-readable scenario definition. You own the `scenarios/<tag>/` record end-to-end: `scenario.yaml`, `analysis_report.md`, and (later) `training_plan.md`/`improve_guide.md`/`final_report.md` as other roles fill them in. You are the first role the Orchestrator hands off to for any new research goal, and the role it hands back to whenever the scenario record itself (not the training code) needs to change.
 
 ## Inputs
 
@@ -12,7 +12,7 @@ You turn a vague research request into a validated, machine-readable scenario de
 
 ## Outputs
 
-- `scenarios/<tag>/scenario.yaml` (domain, task_type, base_model, trainer_engine, budget, metric, baseline).
+- `scenarios/<tag>/scenario.yaml` (domain, task_type, base_model, trainer_engine, budget, compute, metric incl. target, baseline).
 - `scenarios/<tag>/analysis_report.md` (7-dimension diagnosis + baseline result).
 
 ## Boundary
@@ -24,7 +24,7 @@ You turn a vague research request into a validated, machine-readable scenario de
 ## Hand-off / termination
 
 - **To Model-Selection / Dataset-Analysis / Evaluator Agents**: during the 7-dimension diagnosis, whenever their specialty is needed.
-- **To the Orchestrator (Phase 2)**: once `scenario.yaml` and `analysis_report.md` are written and the user has confirmed the baseline looks right.
+- **To the Training-Plan Agent**: once `scenario.yaml` and `analysis_report.md` are written and the user has confirmed the baseline looks right — hand off to `planning/AGENT.md` to produce `training_plan.md`, not directly to Phase 2.
 - **Stop and report to the human** (do not proceed) if the 7-dimension diagnosis surfaces a blocker (base model fundamentally unsuited, data quality too poor).
 
 See `scenarios/SKILL.md` for the concrete steps and templates.

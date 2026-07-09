@@ -13,7 +13,7 @@ This skill turns the universal launch convention defined in `trainer/SKILL.md` i
 scripts/<engine>_run.sh <config> <time_budget_min>
 ```
 
-Where `<engine>` matches `trainer_engine` in `scenario.yaml` (`llama-factory`, `verl`, `roll`, `mmdetection`, `ultralytics`, `transformers`, or a `custom-<project>` engine per `trainer/SKILL.md`).
+Where `<engine>` matches `trainer_engine` in `scenario.yaml` (`llama-factory`, `verl`, `roll`, `trl`, `openrlhf`, `art`, `mmdetection`, `ultralytics`, `transformers`, or a `custom-<project>` engine per `trainer/SKILL.md`).
 
 ## What the wrapper script must do
 
@@ -34,10 +34,10 @@ Where `<engine>` matches `trainer_engine` in `scenario.yaml` (`llama-factory`, `
 
 ## Loop driver: sequential vs. parallel
 
-`scripts/<engine>_run.sh` launches exactly **one** run. The Trainer/Git-Ops Agents drive the loop itself (per `skills/experiment-loop/SKILL.md`):
+`scripts/<engine>_run.sh` launches exactly **one** run. The Trainer/Evaluator Agents drive the loop itself (per `skills/experiment-loop/SKILL.md`) — there is no git commit/revert involved anywhere in this:
 
-- **Sequential mode (default)**: the agent calls `scripts/<engine>_run.sh` once per iteration directly, interleaved with its own commit/reset/log steps. No extra driver script is needed.
-- **Parallel mode (independent candidates, multi-GPU host)**: use `scripts/loop_driver_template.sh` as the starting point rather than hand-writing a new one-off driver per scenario. It implements the per-candidate-commit / per-candidate-keep-discard pattern from `skills/experiment-loop/SKILL.md`'s parallel mode — copy it into `scenarios/<tag>/` and fill in the `CANDIDATES` array, `BASE_MODEL`, `DATA_YAML`/config path, and `BASELINE_BEST`. Do not batch all candidates into a single commit (see `experiment_logs/AGENT.md`'s hard rule) — the template already commits each candidate separately.
+- **Sequential mode (default)**: the agent calls `scripts/<engine>_run.sh` once per iteration directly, interleaved with the Trainer Agent's config-file-copy step and the Evaluator Agent's keep/discard/ledger steps. No extra driver script is needed.
+- **Parallel mode (independent candidates, multi-GPU host)**: use `scripts/loop_driver_template.sh` as the starting point rather than hand-writing a new one-off driver per scenario. It implements the per-candidate-config-file / per-candidate-keep-discard pattern from `skills/experiment-loop/SKILL.md`'s parallel mode — copy it into `scenarios/<tag>/` and fill in the `CANDIDATES` array, `BASE_MODEL`, `DATA_YAML`/config path, and `BASELINE_BEST`. Never write two candidates into the same config file (see `trainer/AGENT.md`'s config-file-lineage rule) — the template already writes each candidate its own file.
 
 ## Notes
 

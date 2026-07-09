@@ -9,9 +9,9 @@ Defines what "better" means for a scenario and how to measure it consistently ac
 
 ## When to use this skill
 
-- Phase 1: determine `scenario.yaml`'s `metric.name` and `metric.direction`.
+- Phase 1: determine `scenario.yaml`'s `metric.name`, `metric.direction`, and `metric.target` (if the user gave a target/达标线; otherwise leave `null`).
 - Phase 2: confirm which benchmark/eval set each candidate technique should be judged against.
-- Phase 3: the read-only evaluation harness that `trainer/SKILL.md` wraps is defined here — never let the agent modify it (see `trainer/SKILL.md`'s read-only boundary rule).
+- Phase 3: the read-only evaluation harness that `trainer/SKILL.md` wraps is defined here — never let the agent modify it (see `trainer/SKILL.md`'s read-only boundary rule). This skill also drives the per-candidate keep/discard/PASS-FAIL/ledger process (see below) — there is no separate Git-Ops skill for this.
 
 ## Steps
 
@@ -19,7 +19,18 @@ Defines what "better" means for a scenario and how to measure it consistently ac
 2. **Pick the metric and direction** using `references/<domain>.md` (see table below) — do not invent a bespoke metric unless the standard ones genuinely don't fit the task; if you must, document why in `analysis_report.md`.
 3. **Pick or build the eval set.** Prefer public/open benchmarks for the domain when applicable (see references); otherwise use a held-out split of the scenario's own data, sized and constructed per `datasets/SKILL.md` guidance (no leakage from train).
 4. **Define the evaluation procedure**: how the eval is invoked (which script/entrypoint in the trainer engine), what it outputs, and how the number is extracted — this becomes the read-only "evaluation harness" that the experiment loop is not allowed to modify.
-5. **Record it** in `scenario.yaml` (`metric.name`, `metric.direction`) and describe the eval set/procedure in `analysis_report.md`.
+5. **Record it** in `scenario.yaml` (`metric.name`, `metric.direction`, `metric.target`) and describe the eval set/procedure in `analysis_report.md`.
+
+## Phase 3: per-candidate keep/discard, PASS/FAIL, and ledger (no git)
+
+After the Trainer Agent hands off a finished (or crashed) run's `run.log` + config path:
+
+1. **Extract the metric**: `grep "^metric_value:\|^peak_vram_mb:" run.log`. Empty output → crash; `tail -n 50 run.log` to classify as fixable-and-retry (hand back to Trainer Agent) or genuine crash (record `status: crash`, `metric_value: 0.0`).
+2. **Compare against `current_best`** using `scenario.yaml`'s `metric.direction` → `keep` if strictly better, else `discard`.
+3. **Check `metric.target`** (if set) against the new value (or the post-keep `current_best` if this candidate was kept) using the same direction → `PASS` if the target is met, else `FAIL`.
+4. **On `keep`**: update `scenario.yaml`'s `current_best` to `{value, config_path: <this candidate's config file>, candidate: <name>}`. **On `discard`**: do nothing to `current_best` — the candidate's config file simply is not referenced by it; no revert needed.
+5. **Append one row** to `experiment_logs/<tag>/experiment_results.csv` (see `experiment_logs/SKILL.md` for the exact column schema) — never rewrite or batch previous rows.
+6. **Report `PASS`/`FAIL`** back to the Orchestrator so it can decide whether to end the loop (target met) or continue/re-plan (budget exhausted, still `FAIL`).
 
 ## Reference index (read the one matching the scenario's domain)
 

@@ -14,6 +14,9 @@ This skill is the contract between the domain-agnostic experiment loop (`skills/
 | LLM (SFT/RLHF/FT) | LLaMA-Factory | `references/llama-factory.md` |
 | LLM/VLM (RL-heavy: RLHF/RLVR at scale) | veRL | `references/verl.md` |
 | LLM/VLM (RL, alternative) | ROLL | `references/roll.md` |
+| LLM (RLHF, HF-ecosystem-native: PPO/DPO/GRPO) | TRL | `references/trl.md` |
+| LLM (RLHF, distributed/large-scale) | OpenRLHF | `references/openrlhf.md` |
+| LLM/agent (RL for tool-use/agentic tasks) | ART | `references/art.md` |
 | CV (detection/segmentation) | mmdetection | `references/mmdetection.md` |
 | CV (detection, fast iteration) | ultralytics | `references/ultralytics.md` |
 | NLP (classification/generation, general) | transformers Trainer | `references/transformers.md` |
@@ -21,7 +24,7 @@ This skill is the contract between the domain-agnostic experiment loop (`skills/
 
 Pick the engine jointly with `models/SKILL.md` (the model must actually be supported by the engine) during Phase 1, and record it as `trainer_engine` in `scenario.yaml`. Read the matching reference file before running anything — each engine has different read-only/editable boundaries and launch conventions.
 
-If a scenario's training code doesn't fit any of the six standard engines (e.g. it's an existing hand-written DDP script the user already had before adopting this framework), write a new `references/custom-<project>.md` following the same structure as the standard ones (Editable / Read-only / Launch convention / Budget mapping / Metric extraction / Common pitfalls) rather than forcing the scenario into a standard engine it doesn't actually use. Use `references/custom-bfdd-segmentation.md` as the template.
+If a scenario's training code doesn't fit any of the standard engines listed above (e.g. it's an existing hand-written DDP script the user already had before adopting this framework), write a new `references/custom-<project>.md` following the same structure as the standard ones (Editable / Read-only / Launch convention / Budget mapping / Metric extraction / Common pitfalls) rather than forcing the scenario into a standard engine it doesn't actually use. Use `references/custom-bfdd-segmentation.md` as the template.
 
 ## Universal plugin interface (L2 protocol)
 

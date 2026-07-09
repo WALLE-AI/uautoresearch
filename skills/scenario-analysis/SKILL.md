@@ -12,6 +12,8 @@ This skill turns a vague research request into a concrete, machine-readable scen
 - Research goal (free text from the user)
 - Data sample or a pointer to the dataset
 - Budget: total time/compute available (this becomes `time_budget_min` per experiment, not the total budget — clarify with the user if ambiguous)
+- Compute: GPU type/count available for training
+- Target metric value, if the user has one (a hard "done" line, e.g. mAP >= 0.9) — otherwise leave it unset and the loop runs until budget exhaustion only
 - Domain, if known (CV / NLP / LLM / VLM) — infer it from the goal and data if not stated
 
 ## Steps
@@ -31,7 +33,7 @@ This skill turns a vague research request into a concrete, machine-readable scen
 6. **Run the baseline.** Delegate to `trainer/SKILL.md` to pick the trainer engine for this domain, then to `scripts/SKILL.md` to actually launch a single baseline run within the intended `time_budget_min`. Record the result.
 7. **Propose a run tag.** Suggest a tag based on today's date and the scenario, e.g. `cv-detect-jul06`. Confirm with the user that `scenarios/<tag>/` does not already exist.
 8. **Write the outputs** (see Output format below) into `scenarios/<tag>/`.
-9. **Confirm with the user** that the scenario, baseline, and metric look right before handing off to Phase 2 (`skills/experiment-design/SKILL.md`).
+9. **Confirm with the user** that the scenario, baseline, and metric look right, then hand off to the Training-Plan Agent (`planning/AGENT.md`) — not directly to Phase 2. The Training-Plan Agent produces `training_plan.md` first, and only then does `skills/experiment-design/SKILL.md` take over.
 
 ## Output format
 
@@ -42,16 +44,24 @@ tag: <run-tag>
 domain: cv | nlp | llm | vlm
 task_type: <e.g. object-detection, instruction-sft, text-classification>
 base_model: <model name/checkpoint>
-trainer_engine: <llama-factory | verl | roll | mmdetection | ultralytics | transformers>
+trainer_engine: <llama-factory | verl | roll | trl | openrlhf | art | mmdetection | ultralytics | transformers | custom-<project>>
 budget:
   time_budget_min: <int>          # wall-clock minutes per single experiment run
+compute:
+  gpu_type: <string>
+  gpu_count: <int>
+  latency_ms_max: <float | null>
 metric:
   name: <e.g. val_bpb, mAP, F1, BLEU>
   direction: minimize | maximize
+  target: <float | null>          # user-specified target, if any
 baseline:
   value: <float>
-  run_id: <commit hash or run id>
+  config_path: <path to baseline config file>
+status: analyzing
 ```
+
+See `scenarios/SKILL.md` for the full schema (including `current_best`, filled in later by the Evaluator Agent).
 
 ### `scenarios/<tag>/analysis_report.md`
 

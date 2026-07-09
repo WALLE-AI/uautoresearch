@@ -1,6 +1,6 @@
 ---
 name: experiment-design
-description: Phase 2 orchestration skill for uautoresearch. Use after a scenario has a confirmed baseline (`scenario.yaml` and `analysis_report.md` exist) and the user wants a concrete plan of what to try to improve the metric — matching candidate techniques, expanding hyperparameter tiers, and deciding what the automated experiment loop should attempt first. Produces `improve_guide.md`.
+description: Phase 2 orchestration skill for uautoresearch. Use after a scenario has a confirmed baseline and a training plan (`scenario.yaml`, `analysis_report.md`, and `training_plan.md` exist) and the user wants a concrete plan of what to try to improve the metric — matching candidate techniques, expanding hyperparameter tiers, and deciding what the automated experiment loop should attempt first. Produces `improve_guide.md`.
 ---
 
 # Phase 2: Experiment Design
@@ -9,12 +9,12 @@ This skill converts a validated baseline into a prioritized, concrete plan of ex
 
 ## Inputs
 
-- `scenarios/<tag>/scenario.yaml` and `analysis_report.md` from Phase 1
+- `scenarios/<tag>/scenario.yaml`, `analysis_report.md`, and `training_plan.md` (Training-Plan Agent's resource plan/training calendar) from Phase 1/Planning
 - The technique candidate library for the scenario's domain (see below)
 
 ## Steps
 
-1. **Read the scenario.** Load `domain`, `task_type`, `base_model`, `trainer_engine`, and the baseline metric value.
+1. **Read the scenario and training plan.** Load `domain`, `task_type`, `base_model`, `trainer_engine`, the baseline metric value, and `training_plan.md`'s resource/calendar constraints (they bound how many candidates can realistically be tried and in what order).
 2. **Match candidate techniques for the domain:**
    - **LLM**: LR schedule/warmup, optimizer choice (AdamW/Muon), batch size, sequence length/packing, LoRA rank/target modules, full-FT vs PEFT, data mixing ratios, RLHF/RLVR reward shaping, quantization-aware training.
    - **VLM**: vision encoder freezing strategy, projector architecture, image resolution/tiling, instruction data mixing, multi-stage training (align → instruct).
@@ -59,4 +59,4 @@ This skill converts a validated baseline into a prioritized, concrete plan of ex
 
 - Keep each candidate entry concrete enough that `skills/experiment-loop/SKILL.md` can act on it without re-deriving what to change.
 - Do not propose changes that violate the trainer engine's read-only boundaries — check `trainer/SKILL.md` before finalizing the guide.
-- Once `improve_guide.md` is written, hand off to `skills/experiment-loop/SKILL.md`.
+- Once `improve_guide.md` is written, update `scenario.yaml`'s `status` to `looping` and hand off to `skills/experiment-loop/SKILL.md`.

@@ -13,6 +13,7 @@ description: Manage the scenario record for a single research run — creating, 
 scenarios/<tag>/
 ├── scenario.yaml         # machine-readable scenario definition (see schema below)
 ├── analysis_report.md    # Phase 1 output
+├── training_plan.md      # Planning output (Training-Plan Agent, see planning/SKILL.md)
 ├── improve_guide.md      # Phase 2 output
 └── final_report.md       # Phase 4 output (written once the loop for this tag ends)
 ```
@@ -29,28 +30,34 @@ base_model: <string>
 trainer_engine: llama-factory | verl | roll | mmdetection | ultralytics | transformers | custom-<project>
 budget:
   time_budget_min: <int>         # wall-clock minutes per single experiment run in the loop
+compute:
+  gpu_type: <string>
+  gpu_count: <int>
+  latency_ms_max: <float | null>  # optional inference-latency requirement
 metric:
   name: <string>                 # e.g. val_bpb, mAP, F1, BLEU
   direction: minimize | maximize
+  target: <float | null>          # user-specified target value; null if no hard target
 baseline:
   value: <float>
-  run_id: <string>                # commit hash or run identifier
+  config_path: <string>           # path to the baseline config file
 current_best:
   value: <float>
-  run_id: <string>
-status: analyzing | designing | looping | done
+  config_path: <string>           # path to the current-best candidate's config file (not a commit hash)
+  candidate: <string>
+status: analyzing | planning | designing | looping | target_met | done
 ```
 
-Keep `current_best` and `status` up to date as the scenario progresses — other skills (especially `skills/experiment-loop/SKILL.md`) rely on `current_best` to decide keep/discard, and `knowledge/SKILL.md` relies on `status: done` to know a scenario is ready for write-back.
+Keep `current_best` and `status` up to date as the scenario progresses — other skills (especially `skills/experiment-loop/SKILL.md`) rely on `current_best` to decide keep/discard, and `knowledge/SKILL.md` relies on `status: done` to know a scenario is ready for write-back. There is no git commit/branch to track — `current_best.config_path` points directly at the winning candidate's independent config file (see `experiment_logs/SKILL.md`).
 
 ## Responsibilities
 
 - **Create**: when Phase 1 starts a new scenario, create the directory and `scenario.yaml` with the fields above filled in as they become known (it's fine to fill `baseline` last, after the baseline run completes).
 - **Read**: any skill needing scenario context should read `scenario.yaml` directly rather than asking the user to repeat information already recorded.
-- **Update**: after every kept experiment in the loop, update `current_best` in `scenario.yaml`. Update `status` as the scenario moves through phases.
+- **Update**: the Evaluator Agent updates `current_best` after every kept experiment in the loop (see `benchmark/AGENT.md`) — this skill defines the schema, not who writes it. Update `status` as the scenario moves through phases (`analyzing` → `planning` → `designing` → `looping` → `target_met`/`done`).
 - **List/inspect**: if the user asks "what scenarios exist" or "what's the status of `<tag>`", list `scenarios/*/scenario.yaml`, report `status` and `current_best` vs `baseline` for each.
 
 ## Notes
 
-- `scenario.yaml` is the contract other skills depend on — do not change its field names without updating every skill that reads it (`skills/experiment-loop/SKILL.md`, `trainer/SKILL.md`, `experiment_logs/SKILL.md`, `knowledge/SKILL.md`).
-- This skill does not itself run training, pick models, or choose metrics — it only manages the scenario record. Delegate that work to `datasets/SKILL.md`, `models/SKILL.md`, `benchmark/SKILL.md`, and `trainer/SKILL.md` respectively.
+- `scenario.yaml` is the contract other skills depend on — do not change its field names without updating every skill that reads it (`skills/experiment-loop/SKILL.md`, `trainer/SKILL.md`, `benchmark/SKILL.md`, `experiment_logs/SKILL.md`, `planning/SKILL.md`, `knowledge/SKILL.md`).
+- This skill does not itself run training, pick models, choose metrics, or generate the training plan — it only manages the scenario record. Delegate that work to `datasets/SKILL.md`, `models/SKILL.md`, `benchmark/SKILL.md`, `planning/SKILL.md`, and `trainer/SKILL.md` respectively.

@@ -29,7 +29,8 @@ Adding a new optional field is fine; never repurpose an existing field name for 
 
 | Column | Type | Notes |
 |---|---|---|
-| `commit` | string (7 chars) | Short git commit hash |
+| `candidate` | string | Short candidate name |
+| `config_path` | string | Path to this candidate's independent config file (replaces git commit hash for provenance — see `trainer/AGENT.md`) |
 | `metric_value` | float | `0.0` for crashes |
 | `peak_vram_gb` | float, 1 decimal | `peak_vram_mb / 1024`; `0.0` for crashes |
 | `status` | enum | `keep` \| `discard` \| `crash` |

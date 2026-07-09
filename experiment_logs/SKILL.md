@@ -1,11 +1,11 @@
 ---
 name: experiment-logging
-description: Define and apply the unified run.log field format and the experiment_results.csv/results ledger format used across every domain and trainer engine. Use this whenever the experiment loop needs to extract a metric from a finished run, or whenever it needs to record a keep/discard/crash result.
+description: Define and apply the unified run.log field format and the experiment_results.csv/results ledger format used across every domain and trainer engine. This is a shared format convention, not an agent role — the Trainer Agent writes run.log, the Monitor Agent writes monitor.log/metrics.csv, and the Evaluator Agent writes experiment_results.csv (see benchmark/AGENT.md). Use this whenever the experiment loop needs to extract a metric from a finished run, or whenever it needs to record a keep/discard/crash result.
 ---
 
 # Experiment Logging
 
-Keeps every experiment — regardless of domain or trainer engine — comparable and greppable, mirroring the `results.tsv` convention from `opensource/autoresearch`.
+Keeps every experiment — regardless of domain or trainer engine — comparable and greppable, mirroring the `results.tsv` convention from `opensource/autoresearch`. There is no dedicated agent role for this module — it is a shared format convention. Candidates are versioned as independent config files (see `trainer/AGENT.md`), not git commits, so this ledger has no `commit` column and there is no git-based revert step anywhere in the framework.
 
 ## `run.log` location
 
@@ -46,10 +46,11 @@ See `references/log-schema.md` for the full field reference, including optional 
 Tab or comma-separated (pick one and stay consistent within a scenario — tab is safer if descriptions might contain commas), with header:
 
 ```
-commit,metric_value,peak_vram_gb,status,domain,engine,description
+candidate,config_path,metric_value,peak_vram_gb,status,domain,engine,description
 ```
 
-- `commit` — short git commit hash (7 chars) for the change tested.
+- `candidate` — short candidate name (e.g. `lr-0.01`, `cosine-sched`).
+- `config_path` — path to this candidate's independent config file (see `trainer/AGENT.md`'s config-file-lineage rule) — this is what replaces a git commit hash for provenance.
 - `metric_value` — the achieved metric; use `0.0`/`0` for crashes.
 - `peak_vram_gb` — peak_vram_mb / 1024, rounded to 1 decimal; `0.0` for crashes.
 - `status` — one of `keep`, `discard`, `crash`.
@@ -60,18 +61,18 @@ commit,metric_value,peak_vram_gb,status,domain,engine,description
 Example:
 
 ```
-commit,metric_value,peak_vram_gb,status,domain,engine,description
-a1b2c3d,0.8120,12.3,keep,cv,ultralytics,baseline
-b2c3d4e,0.8340,12.4,keep,cv,ultralytics,increase LR to 0.01
-c3d4e5f,0.8050,12.3,discard,cv,ultralytics,switch to cosine schedule
-d4e5f6g,0.0,0.0,crash,cv,ultralytics,double batch size (OOM)
+candidate,config_path,metric_value,peak_vram_gb,status,domain,engine,description
+baseline,scenarios/cv-detect-aug12/configs/baseline.yaml,0.8120,12.3,keep,cv,ultralytics,baseline
+lr-0.01,scenarios/cv-detect-aug12/configs/lr-0.01.yaml,0.8340,12.4,keep,cv,ultralytics,increase LR to 0.01
+cosine-sched,scenarios/cv-detect-aug12/configs/cosine-sched.yaml,0.8050,12.3,discard,cv,ultralytics,switch to cosine schedule
+batch-double,scenarios/cv-detect-aug12/configs/batch-double.yaml,0.0,0.0,crash,cv,ultralytics,double batch size (OOM)
 ```
 
-**Do not track `experiment_results.csv` in git** — leave it untracked, per the same convention as `opensource/autoresearch`'s `results.tsv`. It is a local ledger of the loop's progress, not part of the reviewable code diff.
+This file is a local progress ledger, not reviewable code — it is fine to leave it out of version control (`.gitignore`) if the repo is git-tracked, same as `opensource/autoresearch`'s `results.tsv` convention, though this is now just a housekeeping preference, not a hard requirement of the framework's operation.
 
 ## Responsibilities
 
-- Append one row per completed experiment, in order, as the loop runs — do not batch writes at the end (if the loop is interrupted, partial results should still be on disk).
+- The **Evaluator Agent** (`benchmark/AGENT.md`) appends one row per completed experiment, in order, as the loop runs — do not batch writes at the end (if the loop is interrupted, partial results should still be on disk).
 - Never rewrite or delete previous rows.
 - When a scenario finishes, this file is a key input to `skills/knowledge-update/SKILL.md` and to `scenarios/<tag>/final_report.md`.
 
